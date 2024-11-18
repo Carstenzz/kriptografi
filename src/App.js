@@ -11,7 +11,7 @@ import LoginPage from "./pages/login/loginPage";
 function App() {    
     const router = createBrowserRouter(
         createRoutesFromElements(
-        <Route path="/">
+        <Route path="/kriptografi">
             <Route path='/login' element={<LoginPage/>}/>
             <Route index element={<LoginPage/>}/>
         </Route>

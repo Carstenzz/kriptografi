@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/kriptografi/static/css/main.94362f3b.css",
-    "main.js": "/kriptografi/static/js/main.04b88873.js",
+    "main.js": "/kriptografi/static/js/main.fbcf1b3b.js",
     "static/js/453.c3fda90d.chunk.js": "/kriptografi/static/js/453.c3fda90d.chunk.js",
     "static/media/backgound.jpg": "/kriptografi/static/media/backgound.a91bc8b12591d8e4ee85.jpg",
     "index.html": "/kriptografi/index.html",
     "main.94362f3b.css.map": "/kriptografi/static/css/main.94362f3b.css.map",
-    "main.04b88873.js.map": "/kriptografi/static/js/main.04b88873.js.map",
+    "main.fbcf1b3b.js.map": "/kriptografi/static/js/main.fbcf1b3b.js.map",
     "453.c3fda90d.chunk.js.map": "/kriptografi/static/js/453.c3fda90d.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.94362f3b.css",
-    "static/js/main.04b88873.js"
+    "static/js/main.fbcf1b3b.js"
   ]
 }

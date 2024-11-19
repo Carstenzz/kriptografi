@@ -3,126 +3,158 @@ import React from 'react';
 // import mask from '../../assets/mask-image.png';
 // import yellow from '../../assets/yellow.jpeg';
 import './login.css';
+import { useState, useEffect, useRef } from 'react'
+import { IconName, IoEye, IoEyeOffSharp } from "react-icons/io5";
+import { Link } from "react-router-dom";
+import { fetchData } from '../../firestore';
+import CryptoJS from 'crypto-js';
+import { useAuth } from '../../authContext';
+
 
 function LoginPage() {
     
-    // const char = "!#$%&\\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-    // const uname = document.querySelector("#uname")
-    // const pass = document.querySelector("#pass")
-    // const circle = document.querySelector(".circle")
-    // const sButton = document.querySelector(".loginButton")
-    // const eyeButton = document.querySelector(".show")
-    // let showed = false
-    // let readyclicked = true
-    // let value
+    const char = "!#$%&\\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+    
+    const [showed, changeShowed] = useState(false)
+    const [readyClicked, changeReadyClicked] = useState(true)
+    const [value, changeValue] = useState(true)
+    const [username, changeUsername] = useState('')
+    const [password, changePassword] = useState('')
+    const [account, setAccount] = useState([])
+    const { login } = useAuth();
 
-    // const unamePos = uname.getBoundingClientRect()
-    // const passPos = pass.getBoundingClientRect()
-    // const sButtonPos = sButton.getBoundingClientRect()
-    // const eyeButtonPos = eyeButton.getBoundingClientRect()
-    // uname.addEventListener('focus', ()=>{
-    //     circle.animate({
-    //             left : (unamePos.left - circle.clientHeight/2) + "px",
-    //             top : (unamePos.top - circle.clientWidth/2) + "px"
-    //         }, {duration:500, fill:"forwards"})
-    // })
-    // pass.addEventListener('focus', ()=>{
-    //     circle.animate({
-    //             left : (passPos.left - circle.clientHeight/2) + "px",
-    //             top : (passPos.top - circle.clientWidth/2) + "px"
-    //         }, {duration:500, fill:"forwards"})
-    // })
-    // sButton.addEventListener('focus', ()=>{
-    //     circle.animate({
-    //             left : (sButtonPos.left - circle.clientHeight/2) + "px",
-    //             top : (sButtonPos.top - circle.clientWidth/2) + "px"
-    //         }, {duration:500, fill:"forwards"})
-    // })
-    // eyeButton.addEventListener('focus', ()=>{
-    //     circle.animate({
-    //             left : (eyeButtonPos.left - circle.clientHeight/2) + "px",
-    //             top : (eyeButtonPos.top - circle.clientWidth/2) + "px"
-    //         }, {duration:500, fill:"forwards"})
-    // })
+    const unameRef = useRef(null);
+    const passRef = useRef(null);
+    const circleRef = useRef(null);
+    const sButtonRef = useRef(null);
+    const eyeButtonRef = useRef(null);
+  
+    const moveCircle = (targetRef) => {
+      const elementPos = targetRef.current.getBoundingClientRect();
+      const circle = circleRef.current;
+  
+      circle.animate(
+        {
+          left: `${elementPos.left - circle.clientHeight / 2}px`,
+          top: `${elementPos.top - circle.clientWidth / 2}px`,
+        },
+        { duration: 500, fill: 'forwards' }
+      );
+    };
 
-    // function change(button){
-    //     if(readyclicked){
-    //         if(!showed){
-    //             button.innerHTML = '<span class="material-symbols-outlined" style="font-size: 17px;">visibility</span>'
-    //             value = pass.value;
-    //             pass.value = pass.value.split("").map(() => "•").join("")
-    //             setTimeout(()=>{pass.type = "text"}, 1)
-    //             for(let i = 0; i < value.length*2 + 20; i++){
-    //                 setTimeout(()=>{
-    //                     pass.value = pass.value.split("").map((letter, index) => {
-    //                         if(index <= (i-20)/2) return value[index]
-    //                         else if (index <= i/2) return char[Math.floor(Math.random() * 93)]
-    //                         else return "•"
-    //                     }).join("")
-    //                 }, 25 * i)
-    //             }
-    //             pass.value = value
-    //             setTimeout(()=>{readyclicked = true}, 25 * (value.length*2 + 20) + 2)
-    //         } 
-    //         else {
-    //             button.innerHTML = '<span class="material-symbols-outlined" style="font-size: 17px;">visibility_off</span>'
-    //             value = pass.value;
-    //             for(let i = 0; i < value.length*2 + 20; i++){
-    //                 setTimeout(()=>{
-    //                     pass.value = pass.value.split("").map((letter, index) => {
-    //                         if(index <= (i-20)/2) return "•"
-    //                         else if (index <= i/2) return char[Math.floor(Math.random() * 93)]
-    //                         else return value[index]
-    //                     }).join("")
-    //                 }, 25 * i)
-    //             }
-    //             setTimeout(()=>{
-    //                 pass.type = "password"
-    //                 pass.value = value
-    //             }, (value.length*2 + 20) * 25 + 1)
-    //             setTimeout(()=>{readyclicked = true}, 25 * (value.length*2 + 20) + 2)
-    //         }
-    //         readyclicked = false
-    //         showed = !showed
-    //     }
-    // }
+    const getRandomChar = () => char[Math.floor(Math.random() * char.length)];
 
-    // document.addEventListener("pointermove", e =>{
-    //     if(uname === document.activeElement){}
-    //     else if(pass === document.activeElement){}
-    //     else if(eyeButton === document.activeElement){}
-    //     else if(sButton === document.activeElement){}
-    //     else 
-    //         circle.animate({
-    //             left : (e.clientX - circle.clientHeight/2) + "px",
-    //             top : (e.clientY - circle.clientWidth/2) + "px"
-    //         }, {duration:3000, fill:"forwards"})
-    // })
+    const animatePassword = (targetValue, isShowing) => {
+      const passElement = passRef.current;
+      const length = targetValue.length;
+      
+      for (let i = 0; i < length * 2 + 20; i++) {
+        setTimeout(() => {
+          changePassword(prevPassword => {
+            return prevPassword.split("").map((char, index) => {
+                if (isShowing) {
+                  if (index <= (i - 20) / 2) return targetValue[index];
+                  else if (index <= i / 2) return getRandomChar();
+                  else return "•";
+                } else {
+                  if (index <= (i - 20) / 2) return "•";
+                  else if (index <= i / 2) return getRandomChar();
+                  else return targetValue[index];
+                }
+              })
+              .join("");
+          });
+        }, 25 * i);
+      }
+    };
+
+    const showPassword = () => {
+      if (!readyClicked) return;
+  
+      changeReadyClicked(false);
+      const currentPassword = passRef.current.value;
+  
+      if (showed) {
+        animatePassword(currentPassword, false);
+        
+        setTimeout(() => {
+          passRef.current.type = 'password';
+          changePassword(currentPassword);
+        }, (currentPassword.length * 2 + 20) * 25 + 1);
+      } else {
+        setTimeout(() => {
+          passRef.current.type = 'text';
+        }, 1);
+        animatePassword(currentPassword, true);
+        setTimeout(() => {
+          changePassword(currentPassword);
+        }, (currentPassword.length * 2 + 20) * 25 + 1);
+      }
+  
+      changeShowed(!showed);
+      setTimeout(() => changeReadyClicked(true), 25 * (currentPassword.length * 2 + 20) + 2);
+    };
+
+    const loadUsers = async () => {
+      const fetchedUsers = await fetchData('account'); 
+      setAccount(fetchedUsers);
+    };
+
+    const handleLogin = async () => {   
+
+      if (!username || !password) {
+        alert('Please fill in all fields');
+        return;
+      } else if (password.length < 8){
+        alert('Need longer password');
+        return;
+      }
+      
+      const hashedUsername = CryptoJS.SHA256(username).toString()
+      const hashedPassword = CryptoJS.SHA256(password).toString()
+      
+      loadUsers();
+      if (account.some(acc => (acc.username == hashedUsername && acc.password == hashedPassword))){
+        alert('login success');
+        login(username);
+        return;
+      } else if (account.some(acc => acc.username == hashedUsername)){
+        alert('Wrong password');
+        return;
+      } else {
+        alert('Username not found');
+        return;
+      }
+    };
+  
+
+    useEffect(() => {
+      circleRef.current = document.querySelector('.circle');
+    }, []);
 
 
   return (
     <>
-        <div class="circle"></div>
-        <div class="cover"></div>
         <div class="login">
             <h1 class="title">LOGIN</h1>
                 <div class="inputContainer">
                     <div class="inputdiv">
-                        <input type="text" name="username" id="uname" required></input>
+                        <input type="text" name="username" id="uname" required value={username} ref={unameRef} onFocus={() => moveCircle(unameRef)} onChange={e => changeUsername(e.target.value)}/>
                         <label for="uname">Username</label>
                     </div>
                     <div class="inputdiv">
-                        <input type="password" name="pass" id="pass" required></input>
+                        <input type="password" name="pass" id="pass" required value={password} ref={passRef} onFocus={() => moveCircle(passRef)} onChange={e => changePassword(e.target.value)}/>
                         <label for="pass">Password</label>
-                        <button class="material-symbols-outlined show" onclick="change(this)">
-                            visibility_off
+                        <button class="material-symbols-outlined show"  ref={eyeButtonRef} onClick={showPassword} onFocus={() => moveCircle(eyeButtonRef)}>
+                          {showed? <IoEye/> : <IoEyeOffSharp />}
                         </button>
                     </div>
                 </div>
-                    <button class="loginButton">
-                        <h3>Login</h3>
-                        <div class="buttonBackground"></div>
+                <button class="loginButton" ref={sButtonRef} onFocus={() => moveCircle(sButtonRef)} onClick={handleLogin}>
+                    <h3>Login</h3>
+                    <div class="buttonBackground"></div>
                 </button>
+                <Link to="/kriptografi/register">register</Link>
         </div>
     </>
   );

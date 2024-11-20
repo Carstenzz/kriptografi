@@ -9,19 +9,21 @@ import { Link } from "react-router-dom";
 import { fetchData } from '../../firestore';
 import CryptoJS from 'crypto-js';
 import { useAuth } from '../../authContext';
+import { useNavigate } from 'react-router-dom';
 
 
 function LoginPage() {
     
     const char = "!#$%&\\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~"
     
-    const [showed, changeShowed] = useState(false)
-    const [readyClicked, changeReadyClicked] = useState(true)
-    const [value, changeValue] = useState(true)
-    const [username, changeUsername] = useState('')
-    const [password, changePassword] = useState('')
+    const [showed, setShowed] = useState(false)
+    const [readyClicked, setReadyClicked] = useState(true)
+    const [value, setValue] = useState(true)
+    const [username, setUsername] = useState('')
+    const [password, setPassword] = useState('')
     const [account, setAccount] = useState([])
     const { login } = useAuth();
+    const navigate = useNavigate();
 
     const unameRef = useRef(null);
     const passRef = useRef(null);
@@ -50,7 +52,7 @@ function LoginPage() {
       
       for (let i = 0; i < length * 2 + 20; i++) {
         setTimeout(() => {
-          changePassword(prevPassword => {
+          setPassword(prevPassword => {
             return prevPassword.split("").map((char, index) => {
                 if (isShowing) {
                   if (index <= (i - 20) / 2) return targetValue[index];
@@ -71,7 +73,7 @@ function LoginPage() {
     const showPassword = () => {
       if (!readyClicked) return;
   
-      changeReadyClicked(false);
+      setReadyClicked(false);
       const currentPassword = passRef.current.value;
   
       if (showed) {
@@ -79,7 +81,7 @@ function LoginPage() {
         
         setTimeout(() => {
           passRef.current.type = 'password';
-          changePassword(currentPassword);
+          setPassword(currentPassword);
         }, (currentPassword.length * 2 + 20) * 25 + 1);
       } else {
         setTimeout(() => {
@@ -87,12 +89,12 @@ function LoginPage() {
         }, 1);
         animatePassword(currentPassword, true);
         setTimeout(() => {
-          changePassword(currentPassword);
+          setPassword(currentPassword);
         }, (currentPassword.length * 2 + 20) * 25 + 1);
       }
   
-      changeShowed(!showed);
-      setTimeout(() => changeReadyClicked(true), 25 * (currentPassword.length * 2 + 20) + 2);
+      setShowed(!showed);
+      setTimeout(() => setReadyClicked(true), 25 * (currentPassword.length * 2 + 20) + 2);
     };
 
     const loadUsers = async () => {
@@ -100,35 +102,34 @@ function LoginPage() {
       setAccount(fetchedUsers);
     };
 
-    const handleLogin = async () => {   
-
+    const handleLogin = async () => {
       if (!username || !password) {
         alert('Please fill in all fields');
         return;
-      } else if (password.length < 8){
+      } else if (password.length < 8) {
         alert('Need longer password');
         return;
       }
-      
-      const hashedUsername = CryptoJS.SHA256(username).toString()
-      const hashedPassword = CryptoJS.SHA256(password).toString()
-      
-      loadUsers();
-      if (account.some(acc => (acc.username == hashedUsername && acc.password == hashedPassword))){
-        alert('login success');
+  
+      const hashedUsername = CryptoJS.SHA256(username).toString();
+      const hashedPassword = CryptoJS.SHA256(password).toString();
+  
+      await loadUsers();
+  
+      if (account.some((acc) => acc.username === hashedUsername && acc.password === hashedPassword)) {
+        alert('Login success');
         login(username);
-        return;
-      } else if (account.some(acc => acc.username == hashedUsername)){
+        navigate('/');
+      } else if (account.some((acc) => acc.username === hashedUsername)) {
         alert('Wrong password');
-        return;
       } else {
         alert('Username not found');
-        return;
       }
     };
   
 
     useEffect(() => {
+      loadUsers();
       circleRef.current = document.querySelector('.circle');
     }, []);
 
@@ -137,24 +138,24 @@ function LoginPage() {
     <>
         <div class="login">
             <h1 class="title">LOGIN</h1>
-                <div class="inputContainer">
-                    <div class="inputdiv">
-                        <input type="text" name="username" id="uname" required value={username} ref={unameRef} onFocus={() => moveCircle(unameRef)} onChange={e => changeUsername(e.target.value)}/>
-                        <label for="uname">Username</label>
-                    </div>
-                    <div class="inputdiv">
-                        <input type="password" name="pass" id="pass" required value={password} ref={passRef} onFocus={() => moveCircle(passRef)} onChange={e => changePassword(e.target.value)}/>
-                        <label for="pass">Password</label>
-                        <button class="material-symbols-outlined show"  ref={eyeButtonRef} onClick={showPassword} onFocus={() => moveCircle(eyeButtonRef)}>
-                          {showed? <IoEye/> : <IoEyeOffSharp />}
-                        </button>
-                    </div>
+            <div class="inputContainer">
+                <div class="inputdiv">
+                    <input type="text" name="username" id="uname" required value={username} ref={unameRef} onFocus={() => moveCircle(unameRef)} onChange={e => setUsername(e.target.value)}/>
+                    <label for="uname">Username</label>
                 </div>
-                <button class="loginButton" ref={sButtonRef} onFocus={() => moveCircle(sButtonRef)} onClick={handleLogin}>
-                    <h3>Login</h3>
-                    <div class="buttonBackground"></div>
-                </button>
-                <Link to="/kriptografi/register">register</Link>
+                <div class="inputdiv">
+                    <input type="password" name="pass" id="pass" required value={password} ref={passRef} onFocus={() => moveCircle(passRef)} onChange={e => setPassword(e.target.value)}/>
+                    <label for="pass">Password</label>
+                    <button class="material-symbols-outlined show"  ref={eyeButtonRef} onClick={showPassword} onFocus={() => moveCircle(eyeButtonRef)}>
+                      {showed? <IoEye/> : <IoEyeOffSharp />}
+                    </button>
+                </div>
+            </div>
+            <button class="loginButton" ref={sButtonRef} onFocus={() => moveCircle(sButtonRef)} onClick={handleLogin}>
+                <h3>Login</h3>
+                <div class="buttonBackground"></div>
+            </button>
+            <Link to="/register">register</Link>
         </div>
     </>
   );

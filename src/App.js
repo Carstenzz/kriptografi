@@ -6,7 +6,7 @@ import {
   Route,
   RouterProvider,
 } from "react-router-dom";
-import LoginPage from './pages/login/LoginPage';
+import LoginPage from './pages/login/Login';
 import Example from './pages/example/Example';
 import RegisterPage from './pages/register/RegisterPage';
 import BackgroundCircle from './pages/backgroundCircle/BackgroundCircle';
@@ -16,7 +16,7 @@ import Dashboard from './pages/dashboard/dashboard';
 function App() {    
     const router = createBrowserRouter(
         createRoutesFromElements(
-        <Route path="/kriptografi" element={<BackgroundCircle/>}>
+        <Route path="/" element={<BackgroundCircle/>}>
             <Route index element={<Dashboard/>}/>
             <Route path='login' element={<LoginPage/>}/>
             <Route path='register' element={<RegisterPage/>}/>

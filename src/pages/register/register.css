@@ -2,6 +2,9 @@
     margin: 0;
     padding: 0;
 }
+a{
+    color: white;
+}
 body{
     height: 100vh;
     display: grid;
@@ -37,6 +40,8 @@ body{
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
 }
 .inputdiv{
     position: relative;

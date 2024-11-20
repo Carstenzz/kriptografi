@@ -166,6 +166,7 @@ function RegisterPage() {
       };
       await sendData('account', inputAccount);
       alert('User added successfully!');
+      window.location.href = '/login';
     };
   
     useEffect(() => {
@@ -201,7 +202,7 @@ function RegisterPage() {
                     <h3>Register</h3>
                     <div class="buttonBackground"></div>
                 </button>
-                <Link to="/kriptografi/login">login</Link>
+                <Link to="/login">login</Link>
         </div>
     </>
   );

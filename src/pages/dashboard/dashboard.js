@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import CryptoJS from 'crypto-js'; // For AES encryption/decryption
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../authContext'; 
+import './dashboard.css';
 
 const Dashboard = () => {
   // States
@@ -15,7 +18,6 @@ const Dashboard = () => {
 
   const [superOutput, setSuperOutput] = useState('');
 
-
   const [stegImage, setStegImage] = useState(null);
   const [stegInput, setStegInput] = useState('');
   const [stegOutput, setStegOutput] = useState('');
@@ -24,33 +26,56 @@ const Dashboard = () => {
   const [fileKey, setFileKey] = useState('');
   const [fileOutput, setFileOutput] = useState(null);
 
-  // Vigenère Encryption/Decryption Functions
-  const vigenereEncrypt = (text, key) => {
-    const keyChars = key.split('').map((char) => char.charCodeAt(0));
-    return text
-      .split('')
-      .map((char, idx) => {
-        const encryptedChar = String.fromCharCode(
-          ((char.charCodeAt(0) + keyChars[idx % keyChars.length]) % 256)
-        );
-        return encryptedChar;
-      })
-      .join('');
-  };
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [message, setMessage] = useState("");
+  const [encryptedImageURL, setEncryptedImageURL] = useState(null);
+  const [extractedMessage, setExtractedMessage] = useState(null);
+  const [decryptedFileURL, setDecryptedFileURL] = useState(null);
 
+  const { user, logout } = useAuth();
+
+  const [selectedOption, setSelectedOption] = useState('vigenere');
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+	const vigenereEncrypt = (plaintext, key) => {
+    const keyShifts = key.split('').map((char) => char.charCodeAt(0));
+    let keyIndex = 0;
+  
+    return plaintext.split('').map((char) => {
+      if (/[A-Za-z]/.test(char)) {
+        const base = char >= 'a' ? 97 : 65;
+        const shift = (keyShifts[keyIndex % keyShifts.length] - base + 26) % 26;
+        const encrypted = String.fromCharCode(
+          ((char.charCodeAt(0) - base + shift) % 26) + base
+        );
+        keyIndex++;
+        return encrypted;
+      }
+      return char;
+    }).join('');
+  };
+  
   const vigenereDecrypt = (ciphertext, key) => {
-    const keyChars = key.split('').map((char) => char.charCodeAt(0));
-    return ciphertext
-      .split('')
-      .map((char, idx) => {
-        const decryptedChar = String.fromCharCode(
-          ((char.charCodeAt(0) - keyChars[idx % keyChars.length] + 256) % 256)
+    const keyShifts = key.split('').map((char) => char.charCodeAt(0));
+    let keyIndex = 0;
+  
+    return ciphertext.split('').map((char) => {
+      if (/[A-Za-z]/.test(char)) {
+        const base = char >= 'a' ? 97 : 65; 
+        const shift = (keyShifts[keyIndex % keyShifts.length] - base + 26) % 26;
+        const decrypted = String.fromCharCode(
+          ((char.charCodeAt(0) - base - shift + 26) % 26) + base
         );
-        return decryptedChar;
-      })
-      .join('');
+        keyIndex++; 
+        return decrypted;
+      }
+      return char;
+    }).join('');
   };
-
+  
   const handleVigenere = () => {
     const result = isVigenereEncrypt
       ? vigenereEncrypt(vigenereInput, vigenereKey)
@@ -58,7 +83,6 @@ const Dashboard = () => {
     setVigenereOutput(result);
   };
 
-  // AES Encryption/Decryption Functions
   const aesEncrypt = (text, key) => {
     return CryptoJS.AES.encrypt(text, key).toString();
   };
@@ -75,7 +99,6 @@ const Dashboard = () => {
     setAesOutput(result);
   };
 
-  // Super Encryption using Vigenère and AES
   const superEncrypt = (text, key) => {
     const vigenereEncrypted = vigenereEncrypt(text, key);
     return aesEncrypt(vigenereEncrypted, key);
@@ -86,190 +109,313 @@ const Dashboard = () => {
     return vigenereDecrypt(aesDecrypted, key);
   };
 
-  // Steganography Functions
-  const handleSteganographyEncrypt = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
 
-    img.src = URL.createObjectURL(stegImage);
+ const handleSteganographyEncrypt = () => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
     img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       canvas.width = img.width;
       canvas.height = img.height;
+
       ctx.drawImage(img, 0, 0);
-      ctx.font = '20px Arial';
-      ctx.fillStyle = 'red';
-      ctx.fillText(stegInput, 10, img.height - 20);
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
+
+      const messageBits = Array.from(message).flatMap((char) =>
+        char.charCodeAt(0).toString(2).padStart(8, "0").split("").map(Number)
+      );
+      const messageLengthBits = messageBits.length
+        .toString(2)
+        .padStart(32, "0")
+        .split("")
+        .map(Number);
+      const totalBits = messageLengthBits.concat(messageBits);
+
+      const opaquePixelIndices = [];
+      for (let i = 0; i < data.length / 4; i++) {
+        if (data[i * 4 + 3] !== 0) opaquePixelIndices.push(i);
+      }
+
+      for (let i = 0; i < totalBits.length; i++) {
+        const pixelIndex = opaquePixelIndices[i];
+        data[pixelIndex * 4] = (data[pixelIndex * 4] & ~1) | totalBits[i];
+      }
+
+      ctx.putImageData(imageData, 0, 0);
 
       canvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob);
-        setStegOutput(url);
+        setEncryptedImageURL(url);
       });
     };
+    img.src = reader.result;
   };
+  reader.readAsDataURL(selectedFile);
+};
 
-  const handleSteganographyDecrypt = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+
+const handleSteganographyDecrypt = () => {
+  const reader = new FileReader();
+  reader.onload = () => {
     const img = new Image();
-
-    img.src = URL.createObjectURL(stegImage);
     img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       canvas.width = img.width;
       canvas.height = img.height;
+
       ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
 
-      const data = ctx.getImageData(0, img.height - 20, 200, 20).data;
-      const text = String.fromCharCode(...data.filter((_, i) => i % 4 === 0));
-      alert(`Hidden Text: ${text}`);
-    };
-  };
+      const opaquePixelIndices = [];
+      for (let i = 0; i < data.length / 4; i++) {
+        if (data[i * 4 + 3] !== 0) opaquePixelIndices.push(i);
+      }
 
-  // File Encryption/Decryption
-  const handleFileEncryption = () => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      const key = fileKey.split('').map((char) => char.charCodeAt(0));
-      const encryptedContent = content
-        .split('')
-        .map((char, idx) => char.charCodeAt(0) ^ key[idx % key.length])
-        .join(' ');
+      const lengthBits = [];
+      for (let i = 0; i < 32; i++) {
+        const pixelIndex = opaquePixelIndices[i];
+        lengthBits.push(data[pixelIndex * 4] & 1);
+      }
 
-      const blob = new Blob([encryptedContent], { type: 'text/plain' });
-      setFileOutput(URL.createObjectURL(blob));
-    };
-    reader.readAsBinaryString(fileInput);
-  };
+      const messageLength = parseInt(lengthBits.join(""), 2);
 
-  const handleFileDecryption = () => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const encryptedContent = e.target.result.split(' ');
-      const key = fileKey.split('').map((char) => char.charCodeAt(0));
-      const decryptedContent = new Uint8Array(
-        encryptedContent.map((char, idx) =>
-          String.fromCharCode(char ^ key[idx % key.length]).charCodeAt(0)
+      const messageBits = [];
+      for (let i = 32; i < 32 + messageLength; i++) {
+        const pixelIndex = opaquePixelIndices[i];
+        messageBits.push(data[pixelIndex * 4] & 1);
+      }
+
+      const extractedMessage = String.fromCharCode(
+        ...Array.from(
+          { length: messageBits.length / 8 },
+          (_, i) => parseInt(messageBits.slice(i * 8, i * 8 + 8).join(""), 2)
         )
       );
 
-      const blob = new Blob([decryptedContent], { type: 'application/octet-stream' });
-      setFileOutput(URL.createObjectURL(blob));
+      setExtractedMessage(extractedMessage);
     };
-    reader.readAsText(fileInput);
+    img.src = reader.result;
   };
+  reader.readAsDataURL(selectedFile);
+};
+  
+
+// File Encryption
+const handleFileEncryption = () => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const wordArray = CryptoJS.lib.WordArray.create(reader.result);
+    const encrypted = CryptoJS.RC4.encrypt(wordArray, message).toString();
+
+    const fileExtension = selectedFile.name.split(".").pop();
+    const outputData = `${encrypted}.${fileExtension}`;
+
+    const blob = new Blob([outputData], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    setEncryptedImageURL(url);
+  };
+  reader.readAsArrayBuffer(selectedFile);
+};
+
+// File Decryption
+const handleFileDecryption = () => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const [encryptedContent, fileExtension] = reader.result.split(".");
+    const decrypted = CryptoJS.RC4.decrypt(encryptedContent, message);
+    const typedArray = new Uint8Array(
+      decrypted.toString(CryptoJS.enc.Hex).match(/[\da-f]{2}/gi).map((h) => parseInt(h, 16))
+    );
+
+    const blob = new Blob([typedArray], { type: `application/${fileExtension}` });
+    const url = URL.createObjectURL(blob);
+    setDecryptedFileURL(url);
+  };
+  reader.readAsText(selectedFile);
+};
 
   return (
-    <div>
-      <h1>Dashboard</h1>
+    <>
+    <div className='container'>
+      <h1 className='header'>Kripto K-nya Karten</h1>
 
-      {/* Vigenère Cipher */}
-      <section>
-        <h2>Vigenère Cipher</h2>
-        <textarea
-          placeholder="Enter text"
-          value={vigenereInput}
-          onChange={(e) => setVigenereInput(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Enter key"
-          value={vigenereKey}
-          onChange={(e) => setVigenereKey(e.target.value)}
-        />
-        <button onClick={() => setIsVigenereEncrypt(true)}>Encrypt</button>
-        <button onClick={() => setIsVigenereEncrypt(false)}>Decrypt</button>
-        <button onClick={handleVigenere}>Process</button>
-        <textarea readOnly value={vigenereOutput} placeholder="Output will appear here" />
-      </section>
+      <select value={selectedOption} onChange={e => setSelectedOption(e.target.value)}>
+        <option value="vigenere">Vigenere Cipher</option>
+        <option value="aes">AES Cipher</option>
+        <option value="super">Super Encryption</option>
+        <option value="steganography">Steganography</option>
+        <option value="file">File Encryption</option>
+      </select>
 
-      {/* AES Cipher */}
-      <section>
-        <h2>AES Cipher</h2>
-        <textarea
-          placeholder="Enter text"
-          value={aesInput}
-          onChange={(e) => setAesInput(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Enter key"
-          value={aesKey}
-          onChange={(e) => setAesKey(e.target.value)}
-        />
-        <button onClick={() => setIsAESEncrypt(true)}>Encrypt</button>
-        <button onClick={() => setIsAESEncrypt(false)}>Decrypt</button>
-        <button onClick={handleAES}>Process</button>
-        <textarea readOnly value={aesOutput} placeholder="Output will appear here" />
-      </section>
+      {selectedOption === 'vigenere' && (
+        <section>
+          <h2>Vigenère Cipher</h2>
+          <textarea
+            placeholder="Input text"
+            value={vigenereInput}
+            onChange={(e) => setVigenereInput(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Key"
+            value={vigenereKey}
+            onChange={(e) => setVigenereKey(e.target.value)}
+          />
+          {/* <button onClick={() => setIsVigenereEncrypt(true)}>Encrypt</button>
+          <button onClick={() => setIsVigenereEncrypt(false)}>Decrypt</button>
+          <button onClick={handleVigenere}>Process</button> */}
+          <div className='buttonCon'>
+          <button class="loginButton" onClick={() => {setIsVigenereEncrypt(true); handleVigenere(); console.log(isVigenereEncrypt)}}>
+                <h3>Encrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          <button class="loginButton" onClick={() => {setIsVigenereEncrypt(false); handleVigenere(); console.log(isVigenereEncrypt)}}>
+                <h3>Decrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          </div>
+          <textarea readOnly value={vigenereOutput} placeholder="Output will appear here" />
+        </section>
+      )}
 
-      {/* Super Encryption */}
+      {selectedOption === 'aes' && (
+        <section>
+          <h2>AES Cipher</h2>
+          <textarea
+            placeholder="Input text"
+            value={aesInput}
+            onChange={(e) => setAesInput(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Key"
+            value={aesKey}
+            onChange={(e) => setAesKey(e.target.value)}
+          />
+          {/* <button onClick={() => setIsAESEncrypt(true)}>Encrypt</button>
+          <button onClick={() => setIsAESEncrypt(false)}>Decrypt</button>
+          <button onClick={handleAES}>Process</button> */}
+          <div className='buttonCon'>
+          <button class="loginButton" onClick={() => {setIsAESEncrypt(true); handleVigenere(); console.log(isVigenereEncrypt)}}>
+                <h3>Encrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          <button class="loginButton" onClick={() => {setIsAESEncrypt(false); handleVigenere(); console.log(isVigenereEncrypt)}}>
+                <h3>Decrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          </div>
+          <textarea readOnly value={aesOutput} placeholder="Output will appear here" />
+        </section>
+      )}
+
+      {selectedOption === 'super' && (
         <section>
         <h2>Super Encryption</h2>
         <textarea
-            placeholder="Enter text"
+            placeholder="Input text"
             value={vigenereInput}
             onChange={(e) => setVigenereInput(e.target.value)}
         />
         <input
             type="text"
-            placeholder="Enter key"
+            placeholder="Key"
             value={vigenereKey}
             onChange={(e) => setVigenereKey(e.target.value)}
         />
-        <button onClick={() => setSuperOutput(superEncrypt(vigenereInput, vigenereKey))}>
+        {/* <button onClick={() => setSuperOutput(superEncrypt(vigenereInput, vigenereKey))}>
             Encrypt
         </button>
         <button onClick={() => setSuperOutput(superDecrypt(vigenereInput, vigenereKey))}>
             Decrypt
-        </button>
+        </button> */}
+        <div className='buttonCon'>
+          <button class="loginButton" onClick={() => setSuperOutput(superEncrypt(vigenereInput, vigenereKey))}>
+                <h3>Encrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          <button class="loginButton" onClick={() => setSuperOutput(superDecrypt(vigenereInput, vigenereKey))}>
+                <h3>Decrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          </div>
         <textarea readOnly value={superOutput} placeholder="Output will appear here" />
         </section>
+      )}
 
-      {/* Steganography */}
-      <section>
-        <h2>Steganography</h2>
-        <textarea
-          placeholder="Enter text to hide"
-          value={stegInput}
-          onChange={(e) => setStegInput(e.target.value)}
-        />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setStegImage(e.target.files[0])}
-        />
-        <button onClick={handleSteganographyEncrypt}>Encrypt</button>
-        <button onClick={handleSteganographyDecrypt}>Decrypt</button>
-        {stegOutput && (
-          <a href={stegOutput} download="processed_image.png">
-            Download Image
-          </a>
-        )}
-      </section>
+      {selectedOption === 'steganography' && (
+        <section>
+          <h2>Steganography</h2>
+          <textarea
+            placeholder="Text yang ingin disembunyikan"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+          />
+          {/* <button onClick={handleSteganographyEncrypt}>Encrypt</button>
+          <button onClick={handleSteganographyDecrypt}>Decrypt</button> */}
+          <div className='buttonCon'>
+          <button class="loginButton" onClick={handleSteganographyEncrypt}>
+                <h3>Encrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          <button class="loginButton" onClick={handleSteganographyDecrypt}>
+                <h3>Decrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          </div>
+          {encryptedImageURL && (
+            <a href={encryptedImageURL} download="encrypted_image.png">
+              Download Encrypted Image
+            </a>
+          )}
+          {extractedMessage && <p>Extracted Message: {extractedMessage}</p>}
+        </section>
+      )}
 
-      {/* File Encryption */}
-      <section>
-        <h2>File Encryption</h2>
-        <input
-          type="file"
-          onChange={(e) => setFileInput(e.target.files[0])}
-        />
-        <input
-          type="text"
-          placeholder="Enter key"
-          value={fileKey}
-          onChange={(e) => setFileKey(e.target.value)}
-        />
-        <button onClick={handleFileEncryption}>Encrypt File</button>
-        <button onClick={handleFileDecryption}>Decrypt File</button>
-        {fileOutput && (
-          <a href={fileOutput} download={fileInput.name}>
-            Download File
-          </a>
-        )}
-      </section>
+      {selectedOption === 'file' && (
+        <section>
+          <h2>File Encryption</h2>
+          <input
+            type="file"
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+          />
+          <input
+            type="text"
+            placeholder="Enter key"
+            value={fileKey}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <button onClick={handleFileEncryption}>Encrypt File</button>
+          <button onClick={handleFileDecryption}>Decrypt File</button>
+          {encryptedImageURL && (
+            <a href={encryptedImageURL} download="encrypted_file.txt">
+              Download Encrypted File
+            </a>
+          )}
+          {decryptedFileURL && (
+            <a href={decryptedFileURL} download={selectedFile.name}>
+              Download Decrypted File
+            </a>
+          )}
+        </section>
+      )}
     </div>
+    {/* <button onClick={logout} className='logout'>Logout</button> */}
+    <button class="loginButton logout" onClick={logout}>
+                <h3>logout</h3>
+                <div class="buttonBackground"></div>
+        </button>
+    </>
   );
 };
 

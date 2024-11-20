@@ -1,7 +1,7 @@
 section{
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 2rem;
     justify-content: center;
     align-items: center;
 }
@@ -40,7 +40,7 @@ section{
 
 .container{
     background-color: rgba(0, 0, 0, 0.5);
-    padding: 20px;
+    padding: 50px;
     border-radius: 30px;
     text-align: center;
 }

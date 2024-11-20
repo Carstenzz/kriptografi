@@ -203,41 +203,53 @@ const handleSteganographyDecrypt = () => {
   };
   reader.readAsDataURL(selectedFile);
 };
-  
-
-// File Encryption
+ 
 const handleFileEncryption = () => {
   const reader = new FileReader();
   reader.onload = () => {
+    if (!reader.result) return;
+
     const wordArray = CryptoJS.lib.WordArray.create(reader.result);
-    const encrypted = CryptoJS.RC4.encrypt(wordArray, message).toString();
+    const encrypted = CryptoJS.RC4.encrypt(wordArray, fileKey).toString();
 
-    const fileExtension = selectedFile.name.split(".").pop();
-    const outputData = `${encrypted}.${fileExtension}`;
+    const fileExtension = selectedFile.name.split('.').pop();
+    const metadata = JSON.stringify({ extension: fileExtension });
+    const combinedData = `${metadata}|${encrypted}`;
 
-    const blob = new Blob([outputData], { type: "text/plain" });
+    const blob = new Blob([combinedData], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     setEncryptedImageURL(url);
   };
   reader.readAsArrayBuffer(selectedFile);
 };
 
-// File Decryption
 const handleFileDecryption = () => {
   const reader = new FileReader();
   reader.onload = () => {
-    const [encryptedContent, fileExtension] = reader.result.split(".");
-    const decrypted = CryptoJS.RC4.decrypt(encryptedContent, message);
-    const typedArray = new Uint8Array(
-      decrypted.toString(CryptoJS.enc.Hex).match(/[\da-f]{2}/gi).map((h) => parseInt(h, 16))
-    );
+    if (!reader.result) return;
 
-    const blob = new Blob([typedArray], { type: `application/${fileExtension}` });
+    const [metadata, encryptedContent] = reader.result.split('|');
+    const { extension } = JSON.parse(metadata); 
+
+    const decrypted = CryptoJS.RC4.decrypt(encryptedContent, fileKey);
+
+    const decryptedBase64 = decrypted.toString(CryptoJS.enc.Base64);
+    const binaryData = atob(decryptedBase64);
+    const byteArray = new Uint8Array(binaryData.length);
+
+    for (let i = 0; i < binaryData.length; i++) {
+      byteArray[i] = binaryData.charCodeAt(i);
+    }
+
+    const mimeType = `image/${extension}`;
+    const blob = new Blob([byteArray], { type: mimeType });
     const url = URL.createObjectURL(blob);
     setDecryptedFileURL(url);
   };
   reader.readAsText(selectedFile);
 };
+
+
 
   return (
     <>
@@ -392,11 +404,19 @@ const handleFileDecryption = () => {
           <input
             type="text"
             placeholder="Enter key"
-            value={fileKey}
+            value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
-          <button onClick={handleFileEncryption}>Encrypt File</button>
-          <button onClick={handleFileDecryption}>Decrypt File</button>
+          <div className='buttonCon'>
+          <button class="loginButton" onClick={handleFileEncryption}>
+                <h3>Encrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          <button class="loginButton" onClick={handleFileDecryption}>
+                <h3>Decrypt</h3>
+                <div class="buttonBackground"></div>
+            </button>
+          </div>
           {encryptedImageURL && (
             <a href={encryptedImageURL} download="encrypted_file.txt">
               Download Encrypted File

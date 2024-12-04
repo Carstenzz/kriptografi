@@ -15,9 +15,6 @@ section {
 	transition: 0.5s 0.5s;
 	cursor: pointer;
 }
-td{
-	padding: 1rem;
-}
 .buttonBackground {
 	position: absolute;
 	top: 50%;

@@ -148,11 +148,6 @@ const SteganoDecryption = () => {
 
 				<section>
 					<h2>Steganography</h2>
-					<textarea
-						placeholder="Text yang ingin disembunyikan"
-						value={message}
-						onChange={(e) => setMessage(e.target.value)}
-					/>
 					<input
 						type="file"
 						accept="image/*"
@@ -184,7 +179,7 @@ const SteganoDecryption = () => {
 			</div>
 			<Link to="/stegano-encryption">
 				<button class="loginButton logout">
-					Stegano decryption
+					Stegano encryption
 					<div class="buttonBackground"></div>
 				</button>
 			</Link>

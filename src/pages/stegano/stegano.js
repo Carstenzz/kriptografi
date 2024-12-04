@@ -167,6 +167,13 @@ const Stegano = () => {
 							<h3>Encrypt</h3>
 							<div class="buttonBackground"></div>
 						</button>
+						{/* <button
+							class="loginButton"
+							onClick={handleSteganographyDecrypt}
+						>
+							<h3>Decrypt</h3>
+							<div class="buttonBackground"></div>
+						</button> */}
 					</div>
 					{encryptedImageURL && (
 						<a
